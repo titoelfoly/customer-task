@@ -178,7 +178,7 @@ export default function CustomerTable({
     const formData = new FormData();
     formData.append("file", pdfBlob, "export.pdf");
 
-    await fetch(`/api/mailer?email${session.user.email}`, {
+    await fetch(`/api/mailer?email=${session.user.email}`, {
       method: "POST",
       body: formData,
     });
