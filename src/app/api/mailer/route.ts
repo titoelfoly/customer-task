@@ -1,7 +1,5 @@
 import { sendEmail } from "@/utils/sendEmails";
-import { writeFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
-import { join } from "path";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,8 +12,6 @@ export async function POST(req: NextRequest) {
     }
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const path = join("/", "tmp", file.name);
-    await writeFile(path, buffer);
     sendEmail("Customer User Data", "Customer User Data", email, buffer);
 
     return NextResponse.json("", { status: 201 });
