@@ -9,6 +9,9 @@ import CustomerCreationDialog from "./AddCustomer";
 import DeleteConfirmationAlert from "./DeleteConfiramtion";
 import { FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
 import { useReactToPrint } from "react-to-print";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { useSession } from "next-auth/react";
 
 export type Customer = {
   email: string;
@@ -58,6 +61,7 @@ export default function CustomerTable({
   onDelete: (id: string) => void;
   onSort: (type: string, direction: string) => void;
 }) {
+  const { data: session } = useSession();
   const contentRef = useRef<HTMLTableElement>(null);
   const reactToPrintFn = useReactToPrint({ contentRef });
 
@@ -158,6 +162,27 @@ export default function CustomerTable({
     setSelectedCustomer({ name, id });
     setIsDeleteOpen(true);
   };
+  const handleMail = async () => {
+    const content = contentRef.current;
+
+    const canvas = await html2canvas(content, { scale: 2 });
+    const imgData = canvas.toDataURL("image/png");
+
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    const pdfBlob = pdf.output("blob");
+
+    const formData = new FormData();
+    formData.append("file", pdfBlob, "export.pdf");
+
+    await fetch(`/api/mailer?email${session.user.email}`, {
+      method: "POST",
+      body: formData,
+    });
+  };
 
   return (
     <div className="flex flex-col mt-10 gap-6">
@@ -254,6 +279,14 @@ export default function CustomerTable({
             className="w-[120px] bg-red-300 text-white px-4 py-2 rounded disabled:bg-gray-300"
           >
             Export
+          </button>
+        )}
+        {customers.length > 0 && (
+          <button
+            onClick={() => handleMail()}
+            className="w-[120px] bg-red-300 text-white px-4 py-2 rounded disabled:bg-gray-300"
+          >
+            Export send
           </button>
         )}
         {selectedCustomers.length >= 1 && (
