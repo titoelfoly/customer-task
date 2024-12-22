@@ -12,6 +12,7 @@ import { useReactToPrint } from "react-to-print";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { useSession } from "next-auth/react";
+import { useToast } from "./ToastProvider";
 
 export type Customer = {
   email: string;
@@ -63,6 +64,7 @@ export default function CustomerTable({
 }) {
   const { data: session } = useSession();
   const contentRef = useRef<HTMLTableElement>(null);
+  const { showToast } = useToast();
   const reactToPrintFn = useReactToPrint({ contentRef });
 
   const columnHelper = createColumnHelper<Customer>();
@@ -163,25 +165,30 @@ export default function CustomerTable({
     setIsDeleteOpen(true);
   };
   const handleMail = async () => {
-    const content = contentRef.current;
+    try {
+      const content = contentRef.current;
+      const canvas = await html2canvas(content, { scale: 2 });
+      const imgData = canvas.toDataURL("image/png");
 
-    const canvas = await html2canvas(content, { scale: 2 });
-    const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      const pdfBlob = pdf.output("blob");
 
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    const pdfBlob = pdf.output("blob");
+      const formData = new FormData();
+      formData.append("file", pdfBlob, "export.pdf");
 
-    const formData = new FormData();
-    formData.append("file", pdfBlob, "export.pdf");
-
-    await fetch(`/api/mailer?email=${session.user.email}`, {
-      method: "POST",
-      body: formData,
-    });
+      await fetch(`/api/mailer?email=${session.user.email}`, {
+        method: "POST",
+        body: formData,
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      showToast("Email Send Successfully", "");
+    }
   };
 
   return (
@@ -276,7 +283,7 @@ export default function CustomerTable({
         {customers.length > 0 && (
           <button
             onClick={() => reactToPrintFn()}
-            className="w-[120px] bg-red-300 text-white px-4 py-2 rounded disabled:bg-gray-300"
+            className="w-[120px] bg-red-300 text-white px-4 py-2 rounded disabled:bg-gray-300  hover:bg-red-500 transition duration-200"
           >
             Export
           </button>
@@ -284,7 +291,7 @@ export default function CustomerTable({
         {customers.length > 0 && (
           <button
             onClick={() => handleMail()}
-            className="w-[120px] bg-red-300 text-white px-4 py-2 rounded disabled:bg-gray-300"
+            className="w-[120px] bg-red-300 text-white px-4 py-2 rounded disabled:bg-gray-300 hover:bg-red-500 transition duration-200"
           >
             Export send
           </button>
@@ -292,7 +299,7 @@ export default function CustomerTable({
         {selectedCustomers.length >= 1 && (
           <button
             onClick={() => setIsDeleteOpen(true)}
-            className="bg-red-500 text-white px-4 py-2 rounded disabled:bg-gray-300"
+            className="bg-red-500 text-white px-4 py-2 rounded disabled:bg-gray-300  hover:bg-red-800 transition duration-200"
           >
             Delete Selected
           </button>

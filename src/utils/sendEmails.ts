@@ -2,16 +2,24 @@ import nodemailer from "nodemailer";
 
 export const sendEmail = async (subject, body, toEmail, pdfBuffer) => {
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.resend.com",
+    secure: true,
+    port: 465,
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_PASSWORD,
+      user: process.env.EMAIL_SERVER_USER,
+      pass: process.env.EMAIL_SERVER_PASSWORD,
     },
+    // port: 587,
+    // host: "smtp.gmail.com",
+    // secure: false,
+    // auth: {
+    //   user: process.env.GMAIL_USER,
+    //   pass: process.env.GMAIL_PASSWORD,
+    // },
   });
 
-  // Email options
   const mailOptions = {
-    from: process.env.GMAIL_USER,
+    from: "onboarding@resend.dev",
     to: toEmail,
     subject: subject,
     text: body,
@@ -23,10 +31,9 @@ export const sendEmail = async (subject, body, toEmail, pdfBuffer) => {
     ],
   };
 
-  // Send the email
   try {
-    await transporter.sendMail(mailOptions);
-    console.log("Email sent successfully");
+    const res = await transporter.sendMail(mailOptions);
+    console.log("Email sent successfully", res);
   } catch (error) {
     console.error("Error sending email:", error);
     throw new Error("Error sending email");
